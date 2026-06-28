@@ -194,7 +194,7 @@
             });
         },
 
-        definirBloco(config) {
+        defineBlock(config) {
             this.geradoresDeCodigo[config.type] = config.generator;
             const divBloco = document.createElement('div');
             divBloco.classList.add('block');
@@ -363,7 +363,7 @@
 
   
        
-        return `Blockulder.definirBloco({\n` +
+        return `Blockulder.defineBlock({\n` +
                `    category: '${categoria}',\n` +
                `    type: '${nome}',\n` +
                `    color: '${cor}',\n` +
@@ -375,7 +375,7 @@
     }
 });
 
-Blockulder.definirBloco({
+Blockulder.defineBlock({
     category: 'elements', 
     type: 'bloco_text', 
     color: '#2196f3',
@@ -387,7 +387,7 @@ Blockulder.definirBloco({
         return `'${texto}'`;
     }
 });
-Blockulder.definirBloco({
+Blockulder.defineBlock({
     category: 'basic', 
     type: 'bloco_code', 
     color: '#2196f3',
