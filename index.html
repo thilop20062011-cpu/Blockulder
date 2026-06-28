@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>blockulder</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: sans-serif; display: flex; margin: 0; height: 100vh; background-color: #f0f2f5; overflow: hidden; position: relative; }
+        
+        #toolbox { width: 260px; background-color: #ffffff; border-right: 2px solid #ccc; display: flex; flex-direction: column; height: 100vh; }
+        #toolbox h3 { padding: 20px 20px 5px 20px; margin: 0; background-color: #fff; }
+
+        .category-menu { display: flex; flex-wrap: wrap; gap: 5px; padding: 10px 20px; border-bottom: 1px solid #ddd; background-color: #fff; }
+        .category-btn { background-color: #e0e0e0; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; transition: background 0.2s; }
+        .category-btn.active { background-color: #333; color: #fff; }
+
+        .toolbox-content { flex: 1; padding: 15px 20px 80px 20px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; overflow-x: hidden; }
+        
+        #workspace { flex: 1; padding: 20px 20px 150px 20px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; background-image: radial-gradient(#ccc 1px, transparent 1px); background-size: 20px 20px; overflow-y: auto; height: 100vh; }
+        #workspace h3 { margin-top: 0; width: 100%; }
+
+        #output-panel { width: 320px; background-color: #1e1e1e; color: #fff; padding: 20px; display: flex; flex-direction: column; gap: 15px; border-left: 2px solid #ccc; z-index: 10; height: 100vh; }
+        
+        #code-output { 
+            flex-grow: 1; 
+            background-color: #2d2d2d; 
+            color: #a9dc76; 
+            font-family: 'Consolas', 'Courier New', Courier, monospace; 
+            font-size: 13px;
+            padding: 12px; 
+            border-radius: 5px; 
+            white-space: pre-wrap; 
+            word-break: break-all;
+            overflow-y: auto; 
+            border: 1px solid #444; 
+        }
+        #run-btn { background-color: #4caf50; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px; flex-shrink: 0; }
+        #run-btn:hover { background-color: #45a049; }
+
+        .block { 
+            padding: 8px 12px; 
+            color: white; 
+            font-weight: bold; 
+            border-radius: 8px; 
+            cursor: grab; 
+            user-select: none; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            display: inline-flex; 
+            flex-direction: column; 
+            gap: 6px; 
+            align-items: flex-start; 
+            width: max-content;
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .block-header { 
+            display: flex; 
+            align-items: center; 
+            flex-wrap: wrap;
+            gap: 6px; 
+            width: 100%; 
+        }
+
+        .block input, .block select { border: none; border-radius: 4px; padding: 4px 6px; font-weight: bold; color: #000; background: #fff; }
+        .block input[type="number"] { width: 50px; }
+        .block input[type="text"] { width: 90px; }
+        
+        .block-slot { 
+            background-color: rgba(0, 0, 0, 0.2); 
+            border: 2px dashed rgba(255, 255, 255, 0.4); 
+            border-radius: 6px; 
+            padding: 4px; 
+            min-width: 60px; 
+            min-height: 30px; 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+            width: auto;
+            height: auto;
+            gap: 4px;
+        }
+        .block-slot.drag-over { background-color: rgba(255, 255, 255, 0.3); border-color: #fff; }
+
+        .statement-slot { 
+            background-color: rgba(0, 0, 0, 0.15); 
+            border: 2px dashed rgba(255, 255, 255, 0.3); 
+            border-radius: 6px; 
+            padding: 8px; 
+            min-width: 180px; 
+            min-height: 40px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 6px; 
+            align-items: flex-start; 
+            margin-top: 2px; 
+            width: 100%;
+            height: auto;
+        }
+        .statement-slot.drag-over { background-color: rgba(255, 255, 255, 0.25); border-color: #fff; }
+
+        #trash-can { position: fixed; bottom: 20px; left: calc(260px + 40px); width: 60px; height: 60px; background-color: #ef5350; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: all 0.2s ease; z-index: 999; }
+        #trash-can.drag-over { background-color: #b71c1c; transform: scale(1.2); }
+    </style>
+</head>
+<body>
+
+    <div id="toolbox">
+        <h3>Blockulder</h3>
+        <div class="category-menu" id="category-menu">
+            <button class="category-btn active" id="btn-todos-fallback">All</button>
+        </div>
+        <div class="toolbox-content" id="toolbox-content"></div>
+    </div>
+
+    <div id="workspace">
+        <h3>Workspace</h3>
+    </div>
+
+    <div id="trash-can">🗑️</div>
+
+    <div id="output-panel">
+        <h3>Generated code</h3>
+        <div id="code-output">// Add blocks to generate code</div>
+        <button id="run-btn">Executar Código</button>
+    </div>
+
+    <script>
+    const Blockulder = {
+        workspace: null,
+        codeOutput: null,
+        toolboxContent: null,
+        trashCan: null,
+        categoryMenu: null,
+        blockSendoArrastado: null,
+        geradoresDeCodigo: {},
+        categoriasRegistradas: new Set(),
+
+        init() {
+            this.workspace = document.getElementById('workspace');
+            this.codeOutput = document.getElementById('code-output');
+            this.toolboxContent = document.getElementById('toolbox-content');
+            this.trashCan = document.getElementById('trash-can');
+            this.categoryMenu = document.getElementById('category-menu');
+            
+            const btnTodos = document.getElementById('btn-todos-fallback');
+            if (btnTodos) {
+                btnTodos.onclick = () => this.filtrarCategoria('todos', btnTodos);
+            }
+            this.configurarEventosGlobais();
+        },
+
+        injetarMetodoGet(blocoElement) {
+            const self = this;
+            blocoElement.get = function(nome) {
+                const el = blocoElement.querySelector(`[data-name="${nome}"]`);
+                if (!el) return null;
+
+                if (el.classList.contains('block-input')) {
+                    return el.value;
+                }
+                if (el.classList.contains('block-slot')) {
+                    // Retorna o valor de todos os blocos filhos juntos no slot horizontal
+                    const filhos = Array.from(el.children).filter(c => c.classList.contains('block'));
+                    return filhos.map(f => self.extrairValorDoBloco(f)).join(' ') || "''";
+                }
+                if (el.classList.contains('statement-slot')) {
+                    return self.extrairCodigoDoContainer(el);
+                }
+                return null;
+            };
+        },
+
+        registrarCategoriaNaInterface(nome) {
+            if (!this.categoryMenu) return;
+            if (!this.categoriasRegistradas.has(nome)) {
+                this.categoriasRegistradas.add(nome);
+                const btn = document.createElement('button');
+                btn.classList.add('category-btn');
+                btn.innerText = nome.charAt(0).toUpperCase() + nome.slice(1);
+                btn.onclick = () => this.filtrarCategoria(nome, btn);
+                this.categoryMenu.appendChild(btn);
+            }
+        },
+
+        filtrarCategoria(categoria, botaoAtivo) {
+            document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
+            if(botaoAtivo) botaoAtivo.classList.add('active');
+
+            document.querySelectorAll('#toolbox-content .block').forEach(bloco => {
+                const catBloco = bloco.getAttribute('data-category');
+                bloco.style.display = (categoria === 'todos' || catBloco === categoria) ? 'flex' : 'none';
+            });
+        },
+
+        definirBloco(config) {
+            this.geradoresDeCodigo[config.type] = config.generator;
+            const divBloco = document.createElement('div');
+            divBloco.classList.add('block');
+            divBloco.setAttribute('draggable', 'true');
+            divBloco.setAttribute('data-type', config.type);
+            
+            const cat = config.category || 'outros';
+            divBloco.setAttribute('data-category', cat);
+            this.registrarCategoriaNaInterface(cat);
+
+            divBloco.style.backgroundColor = config.color || '#999';
+
+            const header = document.createElement('div');
+            header.classList.add('block-header');
+
+            config.elements.forEach(el => {
+                if (typeof el === 'string') header.appendChild(document.createTextNode(el));
+                else if (el instanceof HTMLElement) {
+                    if (el.classList.contains('statement-slot')) {
+                        divBloco.appendChild(header.cloneNode(true));
+                        header.innerHTML = '';
+                        divBloco.appendChild(el);
+                    } else {
+                        header.appendChild(el);
+                    }
+                }
+            });
+
+            if (header.childNodes.length > 0) divBloco.appendChild(header);
+            
+            this.injetarMetodoGet(divBloco);
+            if(this.toolboxContent) {
+                this.toolboxContent.appendChild(divBloco);
+            }
+        },
+
+        extrairValorDoBloco(bloco) {
+            const tipo = bloco.getAttribute('data-type');
+            return this.geradoresDeCodigo[tipo] ? this.geradoresDeCodigo[tipo](bloco) : '';
+        },
+
+        extrairCodigoDoContainer(container) {
+            const blocos = Array.from(container.children).filter(el => el.classList.contains('block'));
+            let code = "";
+            blocos.forEach(b => { code += this.extrairValorDoBloco(b); });
+            return code;
+        },
+
+        atualizarCodigo() {
+            if (!this.workspace || !this.codeOutput) return;
+            const codigoFinal = this.extrairCodigoDoContainer(this.workspace);
+            this.codeOutput.textContent = codigoFinal || "// Arraste os blocos...";
+            return codigoFinal;
+        },
+
+        configurarStatementSlot(slot) {
+            slot.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); slot.classList.add('drag-over'); });
+            slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+            slot.addEventListener('drop', (e) => {
+                e.preventDefault(); e.stopPropagation(); slot.classList.remove('drag-over');
+                if (this.blockSendoArrastado) {
+                    // Impede auto-encaixe recursivo infinito
+                    if (this.blockSendoArrastado.contains(slot)) return;
+
+                    let bloco = this.blockSendoArrastado;
+                    if (this.blockSendoArrastado.parentElement.id === 'toolbox-content') bloco = this.clonarBlocoMestre(this.blockSendoArrastado);
+                    slot.appendChild(bloco);
+                    this.atualizarCodigo();
+                }
+            });
+        },
+
+        configurarSlot(slot) {
+            slot.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); slot.classList.add('drag-over'); });
+            slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+            slot.addEventListener('drop', (e) => {
+                e.preventDefault(); e.stopPropagation(); slot.classList.remove('drag-over');
+                if (this.blockSendoArrastado) {
+                    // Impede auto-encaixe recursivo infinito
+                    if (this.blockSendoArrastado.contains(slot)) return;
+
+                    let bloco = this.blockSendoArrastado;
+                    if (this.blockSendoArrastado.parentElement.id === 'toolbox-content') bloco = this.clonarBlocoMestre(this.blockSendoArrastado);
+                    
+                    
+                    slot.appendChild(bloco);
+                    this.atualizarCodigo();
+                }
+            });
+        },
+
+        clonarBlocoMestre(mestre) {
+            const clone = mestre.cloneNode(true);
+            clone.style.opacity = '1';
+            
+            // Corrige valores clonados dos selects
+            const selectsMestre = mestre.querySelectorAll('select');
+            const selectsClone = clone.querySelectorAll('select');
+            selectsMestre.forEach((s, idx) => { selectsClone[idx].value = s.value; });
+            
+            this.injetarMetodoGet(clone);
+            
+            clone.querySelectorAll('.block-input').forEach(input => {
+                input.addEventListener('input', () => this.atualizarCodigo());
+                input.addEventListener('change', () => this.atualizarCodigo());
+            });
+            
+            // Re-configura slots internos do clone de forma recursiva
+            clone.querySelectorAll('.block-slot').forEach(s => this.configurarSlot(s));
+            clone.querySelectorAll('.statement-slot').forEach(s => this.configurarStatementSlot(s));
+            return clone;
+        },
+
+        configurarEventosGlobais() {
+            document.addEventListener('dragstart', (e) => { if (e.target.classList.contains('block')) { this.blockSendoArrastado = e.target; e.target.style.opacity = '0.5'; } });
+            document.addEventListener('dragend', (e) => { if (e.target.classList.contains('block')) { e.target.style.opacity = '1'; this.trashCan.classList.remove('drag-over'); this.atualizarCodigo(); } });
+
+            this.trashCan.addEventListener('dragover', (e) => { e.preventDefault(); if (this.blockSendoArrastado && this.blockSendoArrastado.parentElement.id !== 'toolbox-content') this.trashCan.classList.add('drag-over'); });
+            this.trashCan.addEventListener('dragleave', () => this.trashCan.classList.remove('drag-over'));
+            this.trashCan.addEventListener('drop', (e) => { e.preventDefault(); this.trashCan.classList.remove('drag-over'); if (this.blockSendoArrastado && this.blockSendoArrastado.parentElement.id !== 'toolbox-content') { this.blockSendoArrastado.remove(); this.blockSendoArrastado = null; this.atualizarCodigo(); } });
+
+            this.workspace.addEventListener('dragover', (e) => { 
+                e.preventDefault(); 
+                const rect = this.workspace.getBoundingClientRect();
+                const mouseY = e.clientY - rect.top;
+                if (mouseY > rect.height - 50) this.workspace.scrollTop += 16;
+                else if (mouseY < 50) this.workspace.scrollTop -= 16;
+            });
+
+            this.workspace.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (this.blockSendoArrastado && e.target === this.workspace) {
+                    if (this.blockSendoArrastado.parentElement.id === 'toolbox-content') {
+                        this.workspace.appendChild(this.clonarBlocoMestre(this.blockSendoArrastado));
+                    } else {
+                        this.workspace.appendChild(this.blockSendoArrastado);
+                    }
+                    this.atualizarCodigo();
+                }
+            });
+
+            const runBtn = document.getElementById('run-btn');
+            if (runBtn) {
+                runBtn.addEventListener('click', () => {
+                    const codigo = this.atualizarCodigo();
+                    if (codigo) { try { eval(codigo); } catch (e) { alert("Erro: " + e.message); } }
+                });
+            }
+        }
+    };
+
+    const new = {
+        slot: (name) => { const d = document.createElement('div'); d.classList.add('block-slot'); if(name) d.setAttribute('data-name', name); Blockulder.configurarSlot(d); return d; },
+        statement: (name) => { const d = document.createElement('div'); d.classList.add('statement-slot'); if(name) d.setAttribute('data-name', name); Blockulder.configurarStatementSlot(d); return d; },
+        number: (name, val) => { const i = document.createElement('input'); i.type = 'number'; i.value = val; i.classList.add('block-input'); if(name) i.setAttribute('data-name', name); return i; },
+        text: (name, val) => { const i = document.createElement('input'); i.type = 'text'; i.value = val; i.classList.add('block-input'); if(name) i.setAttribute('data-name', name); return i; },
+        dropdown: (name, opcoes) => {
+            const s = document.createElement('select'); s.classList.add('block-input'); if(name) s.setAttribute('data-name', name);
+            opcoes.forEach(o => { const op = document.createElement('option'); op.value = o; op.text = o; s.appendChild(op); });
+            return s;
+        }
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+        Blockulder.init();
+
+  
+       
+        return `Blockulder.definirBloco({\n` +
+               `    category: '${categoria}',\n` +
+               `    type: '${nome}',\n` +
+               `    color: '${cor}',\n` +
+               `    elements: [${elementosInternos}],\n` +
+               `    generator: (bloco) => {\n` +
+               `        return ${codigoGerador}\n` +
+               `    }\n` +
+               `});\n`;
+    }
+});
+
+Blockulder.definirBloco({
+    category: 'elements', 
+    type: 'bloco_text', 
+    color: '#2196f3',
+    elements: ['text', new.text('VEZES5', 'text')],
+    generator: (bloco) => {
+        const texto5 = bloco.get('VEZES5') || '';
+        // Retorna o texto envolto em aspas simples. 
+        // Assim, quando usado dentro de 'elements', ele cria strings válidas para o array.
+        return `'${texto}'`;
+    }
+});
+Blockulder.definirBloco({
+    category: 'basic', 
+    type: 'bloco_code', 
+    color: '#2196f3',
+    elements: ['code', new.text('VEZE', 'text')],
+    generator: (bloco) => {
+        const tex = bloco.get('VEZE') || '';
+        // Retorna o texto envolto em aspas simples. 
+        // Assim, quando usado dentro de 'elements', ele cria strings válidas para o array.
+        return `${tex}`;
+    }
+});
+    });
+    </script>
+</body>
+</html>
